@@ -1,7 +1,5 @@
-
 from flask import Flask,request,render_template
-from flask import Flask
-
+from flask_cors import cross_origin
 import pickle
 import pandas as pd
 
@@ -10,12 +8,12 @@ model = pickle.load(open('flight_rf.pkl','rb'))
 app = Flask(__name__)
 
 @app.route('/')
-
+@cross_origin()
 def home():
 	return render_template('home.html')
 
 @app.route('/predict',methods=['GET','POST'])
-
+@cross_origin()
 def predict():
     if request.method=='POST':
         dep_time = request.form['Dep_Time']
@@ -23,11 +21,17 @@ def predict():
         Journey_day = pd.to_datetime(dep_time,format="%Y-%m-%dT%H:%M").day
         Journey_month = pd.to_datetime(dep_time,format="%Y-%m-%dT%H:%M").month
 
+        Departure_hour = pd.to_datetime(dep_time,format="%Y-%m-%dT%H:%M").hour
+        Departure_min = pd.to_datetime(dep_time,format="%Y-%m-%dT%H:%M").minute
 
+        arrival_time = request.form['Arrival_Time']
+        Arrival_hour =  pd.to_datetime(arrival_time,format="%Y-%m-%dT%H:%M").hour
+        Arrival_min =  pd.to_datetime(arrival_time,format="%Y-%m-%dT%H:%M").minute
 
         Total_stops = int(request.form['stops'])
 
-
+        dur_hour = abs(Arrival_hour-Departure_hour)
+        dur_min = abs(Arrival_min-Departure_min)
 
         airline=request.form['airline']
         if(airline=='Jet Airways'):
@@ -210,18 +214,12 @@ def predict():
             s_Kolkata = 0
             s_Mumbai = 0
             s_Chennai = 1
-        elif (Source == 'Bangalore'):
-            s_Delhi = 0
-            s_Kolkata = 0
-            s_Mumbai = 0
-            s_Chennai = 0
-            s_Bangalore = 1
+
         else:
             s_Delhi = 0
             s_Kolkata = 0
             s_Mumbai = 0
             s_Chennai = 0
-            s_Bangalore = 0
 
 
         Destination = request.form["Destination"]
@@ -249,23 +247,21 @@ def predict():
             d_Hyderabad = 0
             d_Kolkata = 1
 
-        elif (Destination == 'Bangalore'):
-            d_Delhi = 0
-            d_Kolkata = 0
-            d_Mumbai = 0
-            d_Chennai = 0
-            d_Bangalore = 1
-
         else:#Banglore
             d_Cochin = 0
             d_Delhi = 0
             d_Hyderabad = 0
             d_Kolkata = 0
-            d_Bangalore = 0
 
         output = model.predict([[Total_stops,
             Journey_day,
             Journey_month,
+            Departure_hour,
+            Departure_min,
+            Arrival_hour,
+            Arrival_min,
+            dur_hour,
+            dur_min,
             Air_India,
             GoAir,
             IndiGo,
@@ -281,11 +277,9 @@ def predict():
             s_Delhi,
             s_Kolkata,
             s_Mumbai,
-            s_Bangalore,
             d_Cochin,
             d_Delhi,
             d_Hyderabad,
-            d_Bangalore,
             d_Kolkata]])
 
         output = round(output[0],2)
